@@ -83,7 +83,7 @@ The first run flagged 1524 things across 574 sessions, about two and a half
 each, and it sits around 0.6 now. What changed:
 
 - anything over 12 lines is read as a script being shown to you, not a command to paste
-- comments in a Python snippet are ignored, since nobody pastes Python into a shell
+- comments in a Python snippet are ignored, because the rules only apply to shell commands
 - lines inside a diff are ignored, because they record a change instead of asking for one
 - ordinary shell syntax that only resembles the thing being looked for no longer counts,
   which by itself took one rule from 92 sessions to none
@@ -116,51 +116,34 @@ Point `SCAR_AUDIT_ROOT` elsewhere if your transcripts live somewhere else, and
 
 ## What it won't do
 
-It reads Claude Code transcripts in that JSONL shape, so another harness means
-rewriting the reader, which is about fifteen lines in `scan()`.
-
-It only sees what the agent said plus the names of the tools it called, so it
-can't tell you whether the command it handed over was any good, only that there
-was one. It only turns up rules that went unapplied, so a rule that was wrong to begin
-with will pass every time.
-
-Four of the six rules are mine rather than yours, since `routine-no-brief` wants
-a specific tool name and a literal phrase and `push-ask` assumes you've got
-something that owns pushing. Two of them also judge a whole session's text at
-once instead of turn by turn, so `blocked-no-command` is satisfied by a command
-block anywhere in that session, even one four turns later, and by any question
-mark at all. It'll point you at sessions worth looking at without telling you
-which turn went wrong.
-
-A handoff longer than 12 lines is invisible to it, which is the price of that
-length gate, and I've never written one that long but I'd rather say so than let
-you find out.
-
-Every number on this page came off one person's transcripts, mine, with my
-harness and my rules file, so I genuinely don't know how these six behave on
-yours. It isn't a security tool either, since anyone who can edit the rules can
-edit the examples sitting next to them. Windows is untested.
+- work on another harness without a rewritten reader, which is about fifteen lines in `scan()`
+- tell you whether the command it found was any good, only that one was there
+- catch a rule that was wrong to begin with, since it looks for rules that went unapplied
+- fit your setup as it ships, because four of the six rules are tuned to my own conventions
+- say which turn went wrong, since two of the rules read a whole session at once
+- see a handoff longer than 12 lines, which it treats as a listing and skips
+- promise you the same numbers, since the ones here came off my transcripts and my rules file
+- stand in for a security tool, because whoever can edit the rules can edit the examples too
+- run on Windows, which I haven't tested
 
 ## How I tested it
 
-29 offline checks, none of which read a real transcript:
-`bash tests/test-scar-audit.sh`.
+29 offline checks, none of which read a real transcript, in
+`bash tests/test-scar-audit.sh`:
 
-The control is `--selftest`, which asserts 7 rules fire against isolated
-examples and 9 near-misses stay silent, then plants a fault that has to trip the
-audit and reverts it to prove it goes clean again. Every assertion keys on an
-exit code rather than on the summary text, because an earlier version did the
-opposite and four rules passed against zero parsed input without anyone noticing.
-That story is in the [ADR](docs/ADR.md).
+- `--selftest` asserts 7 rules fire against isolated examples and 9 near-misses stay silent
+- a planted fault has to trip the audit, and removing it has to return a clean run
+- every assertion keys on an exit code rather than summary text, after an earlier version
+  did the opposite and passed four rules against zero parsed input
+- one message carrying every near-miss shape at once, long listing included, has to come
+  back clean
+- raising `SCAR_MAX_HANDOFF_LINES` to 999 makes that same listing fire, which is what shows
+  the length gate is doing the work
+- gutting a rule's body on a throwaway copy turns `--selftest` red
 
-Then one message carrying every near-miss shape at once, long listing included,
-asserted clean. And two mutations, because a test that can't fail proves nothing:
-raising `SCAR_MAX_HANDOFF_LINES` to 999 makes that same listing fire, which is
-what shows the length gate is really doing the work, and gutting a rule's body on
-a throwaway copy turns `--selftest` red.
-
-Locally that's 29 passed and 0 failed on macOS 26.5.2 with bash 3.2.57 and jq
-1.7.1. Linux comes from the CI matrix rather than from anything I ran by hand.
+Run locally on macOS 26.5.2 with bash 3.2.57 and jq 1.7.1: 29 passed, 0 failed. Linux
+comes from the CI matrix rather than anything I ran by hand. How the self-test once
+passed against nothing is in the [ADR](docs/ADR.md).
 
 ## License
 
@@ -171,4 +154,4 @@ Design decisions and what changed while building it: [docs/ADR.md](docs/ADR.md).
 
 ---
 
-This little tool is one of a handful I pulled out of my own day-to-day agent setup. I use them all myself, so when something breaks I usually notice fast. But if you spot something weird, or just want to ask how it works, open an issue. I read every one. More tools on my [GitHub profile](https://github.com/justin-rhee).
+This little tool is one of a handful I pulled out of my own day-to-day agent setup. I use them all myself, so when something breaks I usually notice fast. But if you run into any issues, or see anything that looks off, open an issue. I read every one. More tools on my [GitHub profile](https://github.com/justin-rhee).
